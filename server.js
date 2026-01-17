@@ -6,7 +6,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect('mongodb://127.0.0.1:27017/fyndz-bank');
+// If running on Render, use the Cloud DB. If running locally, use your Laptop DB.
+const dbUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/fyndz-bank';
+
+mongoose.connect(dbUrl)
+  .then(() => console.log("Connected to Database"))
+  .catch((err) => console.error("DB Error:", err));
 
 // ✅ UPDATED ACCOUNT MODEL (Tracks Card Status)
 const Account = mongoose.model('Account', {
