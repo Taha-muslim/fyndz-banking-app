@@ -2,7 +2,10 @@
 
 A Full Stack Banking Application built with Node.js, Express, MongoDB, and a custom Frontend Dashboard.
 
-Bill Payment.png
+![Dashboard](Dashboard.png)
+![Bill Payment](Bill%20Payment.png)
+![CardManagement](CardManagement.png)
+
 
 ## 🚀 Features
 - **User Accounts:** Create and manage user balances.
