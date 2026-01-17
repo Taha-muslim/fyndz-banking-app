@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fyndz | Enterprise Banking</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            /* Light Theme (Default) */
+            --primary: #6366f1; --primary-hover: #4f46e5;
+            --bg: #f8fafc; --surface: #ffffff;
+            --text-main: #0f172a; --text-sub: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+        }
+
+        /* Dark Theme Variables */
+        [data-theme="dark"] {
+            --bg: #0f172a; --surface: #1e293b;
+            --text-main: #f8fafc; --text-sub: #94a3b8;
+            --border: #334155;
+        }
+
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); margin: 0; display: flex; height: 100vh; overflow: hidden; transition: background 0.3s; }
+
+        /* --- UI COMPONENTS --- */
+        
+        /* Toast Notification Container */
+        #toast-box { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--surface); color: var(--text-main);
+            padding: 16px 20px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--primary);
+            display: flex; align-items: center; gap: 12px;
+            font-size: 14px; font-weight: 500;
+            animation: slideIn 0.3s ease-out forwards;
+            min-width: 250px;
+        }
+        .toast.success { border-left-color: var(--success); }
+        .toast.error { border-left-color: var(--danger); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* Auth Screen */
+        #auth { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; justify-content: center; align-items: center; transition: 0.3s; }
+        .login-box { background: var(--surface); padding: 48px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1); width: 100%; max-width: 360px; text-align: center; border: 1px solid var(--border); }
+        
+        /* Layout */
+        .sidebar { width: 260px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px; transition: 0.3s; }
+        .logo { font-size: 24px; font-weight: 800; color: var(--text-main); margin-bottom: 40px; display: flex; gap: 12px; align-items: center; }
+        .nav-item { padding: 14px 16px; margin: 4px 0; border-radius: 12px; cursor: pointer; color: var(--text-sub); transition: 0.2s; display: flex; gap: 12px; align-items: center; font-weight: 500; font-size: 14px; }
+        .nav-item:hover { background: var(--bg); color: var(--text-main); }
+        .nav-item.active { background: #eef2ff; color: var(--primary); }
+        [data-theme="dark"] .nav-item.active { background: rgba(99, 102, 241, 0.15); }
+
+        .main { flex: 1; padding: 40px; overflow-y: auto; position: relative; }
+        .section { display: none; opacity: 0; transform: translateY(10px); transition: all 0.4s ease; }
+        .section.active { display: block; opacity: 1; transform: translateY(0); }
+
+        /* Cards & Inputs */
+        .card-box { background: var(--surface); border-radius: 20px; padding: 24px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); margin-bottom: 24px; transition: 0.3s; }
+        h1 { margin: 0 0 8px 0; font-size: 24px; }
+        h3 { margin: 0 0 16px 0; font-size: 16px; color: var(--text-sub); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        input, select { width: 100%; padding: 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; color: var(--text-main); box-sizing: border-box; margin-bottom: 16px; font-family: inherit; transition: 0.2s; }
+        input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
+
+        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        button:disabled { opacity: 0.7; cursor: not-allowed; }
+        button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-sub); }
+        button.secondary:hover { background: var(--bg); color: var(--text-main); }
+
+        /* Visual Credit Card */
+        .visa-card { background: linear-gradient(135deg, #4f46e5, #ec4899); color: white; padding: 24px; border-radius: 20px; height: 160px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.5); transition: 0.3s; }
+        .visa-card::after { content:''; position: absolute; top:-50%; right:-20%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.2), transparent 60%); border-radius: 50%; }
+        .visa-card.frozen { filter: grayscale(1) brightness(0.7); box-shadow: none; }
+
+        /* Chat */
+        .chat-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4); transition: 0.3s; z-index: 50; }
+        .chat-btn:hover { transform: scale(1.1) rotate(10deg); }
+        .chat-window { position: fixed; bottom: 100px; right: 30px; width: 340px; height: 450px; background: var(--surface); border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: none; flex-direction: column; z-index: 50; overflow: hidden; }
+        .chat-body { flex: 1; padding: 16px; overflow-y: auto; background: var(--bg); display: flex; flex-direction: column; gap: 10px; }
+        .bubble { padding: 10px 14px; border-radius: 16px; max-width: 80%; font-size: 13px; line-height: 1.4; }
+        .bubble.bot { background: var(--surface); color: var(--text-main); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .bubble.user { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+
+        /* History List */
+        .history-item { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--border); }
+        .history-item:last-child { border: 0; }
+        .icon-box { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-right: 16px; }
+        
+    </style>
+</head>
+<body>
+
+    <div id="toast-box"></div>
+
+    <div id="auth">
+        <div class="login-box">
+            <div style="font-size: 40px; color: var(--primary); margin-bottom: 16px;"><i class="fa-solid fa-shapes"></i></div>
+            <h1 style="color: var(--text-main);">Fyndz Bank</h1>
+            <p style="color: var(--text-sub); margin-bottom: 32px;">Secure Enterprise Login</p>
+            
+            <input type="text" id="user" placeholder="Username (e.g. Alice)">
+            <input type="password" id="pin" placeholder="PIN (e.g. 1234)">
+            
+            <button onclick="login()" id="loginBtn">Sign In securely</button>
+            <button class="secondary" onclick="register()" style="margin-top: 12px;">Create Account</button>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="logo"><i class="fa-solid fa-shapes" style="color: var(--primary);"></i> Fyndz</div>
+        
+        <div class="nav-item active" onclick="nav('dashboard', this)">
+            <i class="fa-solid fa-chart-pie"></i> Overview
+        </div>
+        <div class="nav-item" onclick="nav('cards', this)">
+            <i class="fa-regular fa-credit-card"></i> Cards & Limits
+        </div>
+        <div class="nav-item" onclick="nav('bills', this)">
+            <i class="fa-solid fa-file-invoice-dollar"></i> Bill Payments
+        </div>
+        
+        <div style="margin-top: auto; border-top: 1px solid var(--border); padding-top: 20px;">
+            <div class="nav-item" onclick="toggleTheme()">
+                <i class="fa-solid fa-moon"></i> Dark Mode
+            </div>
+            <div class="nav-item" onclick="location.reload()" style="color: var(--danger);">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        
+        <div id="dashboard" class="section active">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <div>
+                    <h1>Financial Overview</h1>
+                    <p style="color: var(--text-sub); margin: 0;">Welcome back to your portfolio.</p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 12px; color: var(--text-sub); font-weight: 600; margin-bottom: 4px;">TOTAL BALANCE</div>
+                    <div id="balanceDisplay" style="font-size: 32px; font-weight: 800; color: var(--text-main);">$0.00</div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                <div class="card-box">
+                    <h3>Spending Analytics</h3>
+                    <div style="height: 250px; display: flex; justify-content: center;">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card-box">
+                    <h3>Quick Actions</h3>
+                    <button onclick="nav('bills', document.querySelectorAll('.nav-item')[2])" style="margin-bottom: 12px; background: var(--bg); color: var(--text-main); border: 1px solid var(--border);">
+                        <i class="fa-solid fa-bolt" style="color: var(--warning);"></i> Pay Utility
+                    </button>
+                    <button onclick="nav('cards', document.querySelectorAll('.nav-item')[1])" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border);">
+                        <i class="fa-solid fa-snowflake" style="color: var(--primary);"></i> Freeze Card
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-box">
+                <h3>Recent Transactions</h3>
+                <div id="historyList">
+                    <p style="color: var(--text-sub); text-align: center;">Loading history...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="cards" class="section">
+            <h1>Card Management</h1>
+            <p style="color: var(--text-sub); margin-bottom: 40px;">Control your physical and virtual cards.</p>
+            
+            <div style="max-width: 400px; margin: 0 auto;">
+                <div id="myCard" class="visa-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <i class="fa-brands fa-cc-visa" style="font-size: 42px; opacity: 0.9;"></i>
+                        <i class="fa-solid fa-wifi" style="font-size: 24px; opacity: 0.6;"></i>
+                    </div>
+                    <div style="font-size: 26px; letter-spacing: 4px; font-family: monospace; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        4291 8832 9910 2231
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+                        <span id="cardHolderName">Alice Doe</span>
+                        <span>12/29</span>
+                    </div>
+                </div>
+
+                <div class="card-box" style="margin-top: 30px; display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 4px;">Freeze Card</div>
+                        <div style="font-size: 13px; color: var(--text-sub);">Temporarily disable all transactions</div>
+                    </div>
+                    <button id="freezeBtn" onclick="toggleFreeze()" style="width: auto; padding: 10px 24px;">Freeze</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="bills" class="section">
+            <h1>Bill Payments</h1>
+            <div class="card-box" style="max-width: 500px;">
+                <label>Service Provider</label>
+                <select id="biller">
+                    <option value="Electricity Co">⚡ City Electric & Power</option>
+                    <option value="Internet Provider">📡 FiberNet High Speed</option>
+                    <option value="Water Dept">💧 City Water Dept</option>
+                    <option value="Netflix">🎬 Netflix Subscription</option>
+                </select>
+                
+                <label>Amount Due ($)</label>
+                <input type="number" id="billAmount" placeholder="0.00">
+                
+                <button onclick="payBill()" id="payBtn">
+                    <i class="fa-solid fa-check"></i> Confirm Payment
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-btn" onclick="toggleChat()"><i class="fa-solid fa-robot"></i></div>
+    <div class="chat-window" id="chatWindow">
+        <div style="padding: 16px; background: var(--surface); border-bottom: 1px solid var(--border); font-weight: 700; display: flex; justify-content: space-between;">
+            <span>Fyndz Assistant</span>
+            <i class="fa-solid fa-xmark" onclick="toggleChat()" style="cursor: pointer; color: var(--text-sub);"></i>
+        </div>
+        <div class="chat-body" id="chatBody">
+            <div class="bubble bot">Hello! I am your AI financial assistant. How can I help you today?</div>
+        </div>
+        <div style="padding: 12px; border-top: 1px solid var(--border); background: var(--surface);">
+            <input type="text" id="chatInput" placeholder="Ask anything..." style="margin: 0;" onkeypress="handleChat(event)">
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let isFrozen = false;
+        
+        // --- 1. CORE FUNCTIONS ---
+
+        async function login() {
+            const user = document.getElementById('user').value;
+            const pin = document.getElementById('pin').value;
+            const btn = document.getElementById('loginBtn');
+
+            if(!user || !pin) return showToast('Please enter username and PIN', 'error');
+
+            setLoading(btn, true);
+            
+            try {
+                const res = await fetch('http://localhost:4000/login', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user, pin })
+                });
+                const data = await res.json();
+                
+                setLoading(btn, false);
+
+                if(res.ok) {
+                    currentUser = user;
+                    isFrozen = data.cardFrozen;
+                    document.getElementById('auth').style.opacity = '0';
+                    setTimeout(() => document.getElementById('auth').style.display = 'none', 300);
+                    
+                    document.getElementById('cardHolderName').innerText = user;
+                    showToast(`Welcome back, ${user}!`, 'success');
+                    
+                    updateUI(data.balance);
+                    updateCardUI();
+                    renderChart();
+                    updateHistory();
+                } else {
+                    showToast(data.error, 'error');
+                }
+            } catch(e) { setLoading(btn, false); showToast("Server Offline. Run 'node server.js'", 'error'); }
+        }
+
+        async function register() {
+            const user = document.getElementById('user').value;
+            const pin = document.getElementById('pin').value;
+            if(!user || !pin) return showToast('Fill all fields', 'error');
+
+            const res = await fetch('http://localhost:4000/register', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user, pin: Number(pin) })
+            });
+            const data = await res.json();
+            if(res.ok) showToast("Account created! Please login.", 'success');
+            else showToast(data.error, 'error');
+        }
+
+        async function payBill() {
+            const biller = document.getElementById('biller').value;
+            const amt = document.getElementById('billAmount').value;
+            const btn = document.getElementById('payBtn');
+
+            if(!amt) return showToast("Enter an amount", "error");
+            
+            setLoading(btn, true);
+
+            const res = await fetch('http://localhost:4000/transfer', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fromUser: currentUser, toUser: biller, amount: Number(amt), type: 'bill' })
+            });
+            
+            setLoading(btn, false);
+            const data = await res.json();
+
+            if(res.ok) {
+                showToast(`Paid $${amt} to ${biller}`, 'success');
+                document.getElementById('billAmount').value = '';
+                updateUI();
+                updateHistory();
+            } else {
+                showToast(data.error, 'error');
+            }
+        }
+
+        async function toggleFreeze() {
+            const btn = document.getElementById('freezeBtn');
+            setLoading(btn, true);
+            
+            const res = await fetch('http://localhost:4000/toggle-card', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: currentUser })
+            });
+            const data = await res.json();
+            isFrozen = data.status;
+            
+            setLoading(btn, false);
+            updateCardUI();
+            showToast(isFrozen ? "Card Frozen" : "Card Unfrozen", isFrozen ? "warning" : "success");
+        }
+
+        // --- 2. UI HELPERS ---
+
+        function showToast(msg, type = 'success') {
+            const box = document.getElementById('toast-box');
+            const el = document.createElement('div');
+            el.className = `toast ${type}`;
+            el.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-circle-exclamation'}"></i> ${msg}`;
+            box.appendChild(el);
+            setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
+        }
+
+        function setLoading(btn, isLoading) {
+            if(isLoading) {
+                btn.dataset.text = btn.innerText;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+                btn.disabled = true;
+            } else {
+                btn.innerText = btn.dataset.text;
+                btn.disabled = false;
+            }
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+        }
+
+        function nav(id, btn) {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+        }
+
+        function updateCardUI() {
+            const card = document.getElementById('myCard');
+            const btn = document.getElementById('freezeBtn');
+            if(isFrozen) {
+                card.classList.add('frozen');
+                btn.innerText = "Unfreeze Card";
+                btn.style.background = "var(--danger)";
+            } else {
+                card.classList.remove('frozen');
+                btn.innerText = "Freeze Card";
+                btn.style.background = "var(--text-main)";
+            }
+        }
+
+        async function updateHistory() {
+            const res = await fetch(`http://localhost:4000/history/${currentUser}`);
+            const data = await res.json();
+            const list = document.getElementById('historyList');
+            
+            if(data.length === 0) return list.innerHTML = '<p style="text-align:center; color:var(--text-sub)">No transactions yet.</p>';
+
+            list.innerHTML = data.reverse().map(txn => {
+                let icon = 'fa-money-bill-transfer';
+                let color = 'var(--primary)';
+                let bg = '#eef2ff';
+                let title = txn.type === 'bill' ? `Payment to ${txn.receiver}` : (txn.sender === currentUser ? `Sent to ${txn.receiver}` : `Received from ${txn.sender}`);
+                
+                if(txn.type === 'bill') { 
+                    icon = 'fa-bolt'; color = '#f59e0b'; bg = '#fef3c7'; 
+                    if(txn.receiver.includes('Netflix')) icon = 'fa-film';
+                    if(txn.receiver.includes('Water')) icon = 'fa-faucet';
+                }
+
+                return `
+                <div class="history-item">
+                    <div style="display:flex; align-items:center;">
+                        <div class="icon-box" style="background:${bg}; color:${color};"><i class="fa-solid ${icon}"></i></div>
+                        <div>
+                            <div style="font-weight:600; color:var(--text-main);">${title}</div>
+                            <div style="font-size:12px; color:var(--text-sub);">${new Date(txn.date).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                    <div style="font-weight:700; color: ${txn.sender === currentUser ? 'var(--text-main)' : 'var(--success)'}">
+                        ${txn.sender === currentUser ? '-' : '+'}$${txn.amount}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // --- 3. CHART & CHAT ---
+
+        function renderChart() {
+            const ctx = document.getElementById('budgetChart').getContext('2d');
+            if(window.myChart) window.myChart.destroy(); // Prevent duplicate charts
+            
+            window.myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Utility Bills', 'Transfer', 'Savings', 'Entertainment'],
+                    datasets: [{
+                        data: [1200, 450, 800, 150],
+                        backgroundColor: ['#6366f1', '#ec4899', '#10b981', '#f59e0b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { cutout: '70%', plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        function toggleChat() {
+            const win = document.getElementById('chatWindow');
+            win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function handleChat(e) {
+            if(e.key === 'Enter') {
+                const input = document.getElementById('chatInput');
+                const body = document.getElementById('chatBody');
+                if(!input.value) return;
+
+                body.innerHTML += `<div class="bubble user">${input.value}</div>`;
+                const query = input.value.toLowerCase();
+                input.value = '';
+                
+                // Simulate typing delay
+                setTimeout(() => {
+                    let reply = "I can help with transfers, bills, and account security.";
+                    if(query.includes('bill') || query.includes('pay')) reply = "You can pay utility providers in the 'Bill Payments' tab.";
+                    if(query.includes('freeze') || query.includes('lost')) reply = "If you lost your card, please freeze it immediately in the 'Cards' tab.";
+                    if(query.includes('hello') || query.includes('hi')) reply = "Hello! I am the Fyndz Virtual Assistant.";
+                    
+                    body.innerHTML += `<div class="bubble bot">${reply}</div>`;
+                    body.scrollTop = body.scrollHeight;
+                }, 800);
+            }
+        }
+
+        async function updateUI(bal) {
+            if(!bal && currentUser) {
+                const res = await fetch(`http://localhost:4000/balance/${currentUser}`);
+                const data = await res.json();
+                bal = data.balance;
+            }
+            if(bal !== undefined) document.getElementById('balanceDisplay').innerText = `$${bal.toLocaleString()}`;
+        }
+    </script>
+</body>
+</html>
